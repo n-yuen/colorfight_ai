@@ -9,8 +9,13 @@ class Agent:
     def __init__():
         self.g_weight = 1.0
         self.e_weight = 1.0
-        g_threshold = 0
-        e_threshold = 0
+        self.cdw = 1.0
+        self.cgw = 1.0
+        self.dpw = 1.0
+        self.oew = 1.0
+        self.ogw = 1.0
+        self.g_threshold = 0
+        self.e_threshold = 0
         pass
 
     def connect_room(self, room='public', username='SmallBrain', password=str(int(time.time())):
@@ -22,19 +27,45 @@ class Agent:
             self.game.disconnect()
 
     def cell_danger(cell):
-      for dx in range(-5, 5):
-        for dy in range(-5, 5):
-          cell_danger += abs(dx) + abs(dy) if 
+        for dx in range(-5, 5):
+            for dy in range(-5, 5):
+                cell_danger += 1 / (abs(dx) + abs(dy)) if self.map[cell.position + Position(dx, dy)]
+
+        return cell_danger
 
     def home_dist(cell):
         for h in self.game.home
 
     def cell_desire(cell):
-      cell_danger, cdw = self.cell_danger(cell), 
-      cell_gain, cgw = self.cell_gain(cell), 
-      delta_perim, dpw = self.delta_perim(cell), 
+      cell_danger = cdw * self.cell_danger(cell), 
+      cell_gain = cgw * self.cell_gain(cell), 
+      delta_perim = dpw * self.delta_perim(cell),
+      opp_value = self.opp_value(cell), 
 
-      home_dist, hdw = self.home_dist(cell), 
+      #home_dist, hdw = self.home_dist(cell), 
+
+      return (cell_danger, cell_gain, delta_perim, opp_value)
+
+    def cell_gain(cell):
+        return max(cell.gold * self.g_weight, cell.energy * self.e_weight)
+
+    def delta_perim(cell):
+        rtn = 0
+        for pos in cell.position.get_surrounding_cardinals():
+            c = game.game_map[pos]
+            if c.owner == game.uid:
+                rtn += 1
+
+        return rtn
+
+    def opp_value(cell):
+        if cell.owner != game.uid:
+            if cell.building == BLD_GOLD_MINE:
+                return self.ogw * cell.building.level
+            if cell.building == BLD_ENERGY_WELL:
+                return self.oew * cell.building.level
+
+        return 0
 
     def build_weight(cell):
         return (cell.gold * g_weight, cell.energy * e_weight)
