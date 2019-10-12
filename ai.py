@@ -4,37 +4,38 @@ import random
 from colorfight.constants import BLD_GOLD_MINE, BLD_ENERGY_WELL, BLD_FORTRESS, BUILDING_COST
 
 
-
 class Agent:
     def __init__():
-        self.g_weight = 1.0
-        self.e_weight = 1.0
-        g_threshold = 0
-        e_threshold = 0
         pass
 
     def connect_room(self, room='public', username='SmallBrain', password=str(int(time.time())):
-        
         self.game = Colorfight()
         self.game.connection(room=room)
 
         if not self.game.register(username=username, password=password):
             self.game.disconnect()
 
+        self.map = self.game.game_map
+
+        self.home = None
+
+
     def cell_danger(cell):
-      for dx in range(-5, 5):
-        for dy in range(-5, 5):
-          cell_danger += abs(dx) + abs(dy) if 
+        for dx in range(-5, 5):
+            for dy in range(-5, 5):
+                cell_danger += 1 / (abs(dx) + abs(dy)) if self.map[cell.position + Position(dx, dy)]
+
+        return cell_danger
 
     def home_dist(cell):
         for h in self.game.home
 
     def cell_desire(cell):
-      cell_danger, cdw = self.cell_danger(cell), 
-      cell_gain, cgw = self.cell_gain(cell), 
-      delta_perim, dpw = self.delta_perim(cell), 
+      cell_danger, cdw = self.cell_danger(cell), 1
+      cell_gain, cgw = self.cell_gain(cell), 1
+      delta_perim, dpw = self.delta_perim(cell), 1
+      home_dist, hdw = self.home_dist(cell), 1
 
-      home_dist, hdw = self.home_dist(cell), 
 
     def build_weight(cell):
         return (cell.gold * g_weight, cell.energy * e_weight)
@@ -62,6 +63,15 @@ class Agent:
                 continue
 
             me = self.game.me
+
+            # Initialize all member variables necessary
+
+            found_home = False
+            for cell in game.me.cells.values():
+                if cell.is_home:
+                    self.home = cell
+                    found_home = True
+                    break
 
             # game.me.cells is a dict, where the keys are Position and the values
             # are MapCell. Get all my cells.
@@ -91,13 +101,13 @@ class Agent:
                 # tech_level by yourself.
                 if cell.building.can_upgrade and \
                         (cell.building.is_home or cell.building.level < me.tech_level):
-                    
+
                     weight = None
                     if cell.building.name == BLD_ENERGY_WELL:
                         weight = self.g_weight * cell.gold
                     elif cell.building.name == BLD_GOLD_MINE:
                         weight = self.e_weight * cell.energy
-                        
+
                     build_list.append((None, 1, weight, cell))
 
                 # Build a random building if we have enough gold
@@ -116,7 +126,7 @@ class Agent:
                 def sortBuildOps(buildOp):
                     return buildOp[2]
 
-                build_list.sort(key = sortBuildOps)
+                build_list.sort(key=sortBuildOps)
                 for i in build_list:
                     if me.gold < g_threshold or me.energy < e_threshold:
                         break
@@ -156,9 +166,9 @@ if __name__ == '__main__':
     game = Colorfight()
 
     # ================== Find a random non-full rank room ==================
-    #room_list = game.get_gameroom_list()
-    #rank_room = [room for room in room_list if room["rank"] and room["player_number"] < room["max_player"]]
-    #room = random.choice(rank_room)["name"]
+    # room_list = game.get_gameroom_list()
+    # rank_room = [room for room in room_list if room["rank"] and room["player_number"] < room["max_player"]]
+    # room = random.choice(rank_room)["name"]
     # ======================================================================
     room = 'public'  # Delete this line if you have a room from above
 
