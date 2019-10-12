@@ -1,4 +1,4 @@
-from colorfight import Colorfight
+from colorfight import Colorfight, Position
 import time
 import random
 from colorfight.constants import BLD_GOLD_MINE, BLD_ENERGY_WELL, BLD_FORTRESS, BUILDING_COST
@@ -6,59 +6,51 @@ from colorfight.constants import BLD_GOLD_MINE, BLD_ENERGY_WELL, BLD_FORTRESS, B
 
 
 class Agent:
-    def __init__():
-        self.g_weight = 1.0
-        self.e_weight = 1.0
-        self.cdw = 1.0
+    def __init__(self):
+        self.cdw = -1.0
         self.cgw = 1.0
         self.dpw = 1.0
         self.oew = 1.0
         self.ogw = 1.0
         self.g_threshold = 0
+        self.e_threshold0 = 0
         self.e_threshold = 0
-        pass
 
-    def connect_room(self, room='public', username='SmallBrain', password=str(int(time.time())):
-        
-        self.game = Colorfight()
-        self.game.connection(room=room)
+    def e_weight(self):
+        return 400.0 - game.turn
 
-        if not self.game.register(username=username, password=password):
-            self.game.disconnect()
+    def g_weight(self):
+        return game.turn
 
-    def cell_danger(cell):
-        for dx in range(-5, 5):
-            for dy in range(-5, 5):
-                cell_danger += 1 / (abs(dx) + abs(dy)) if self.map[cell.position + Position(dx, dy)]
 
-        return cell_danger
+    def cell_danger(self, cell):
+        # cell_danger = 0
+        # for dx in range(-5, 5):
+        #     for dy in range(-5, 5):
+        #         cell_danger += 1.0 / (abs(dx) + abs(dy)) if cell.map[cell.position + Position(dx, dy)] else 0
 
-    def home_dist(cell):
-        for h in self.game.home
+        # return cell_danger
+        return 0
 
-    def cell_desire(cell):
-      cell_danger = cdw * self.cell_danger(cell), 
-      cell_gain = cgw * self.cell_gain(cell), 
-      delta_perim = dpw * self.delta_perim(cell),
-      opp_value = self.opp_value(cell), 
+    def home_dist(self, cell):
+        return 0
+        #for h in self.game.home
 
-      #home_dist, hdw = self.home_dist(cell), 
 
-      return (cell_danger, cell_gain, delta_perim, opp_value)
 
-    def cell_gain(cell):
-        return max(cell.gold * self.g_weight, cell.energy * self.e_weight)
+    def cell_gain(self, cell):
+        return max(cell.gold * self.g_weight(), cell.energy * self.e_weight())
 
-    def delta_perim(cell):
+    def delta_perim(self, cell):
         rtn = 0
         for pos in cell.position.get_surrounding_cardinals():
-            c = game.game_map[pos]
+            c = self.game.game_map[pos]
             if c.owner == game.uid:
                 rtn += 1
 
         return rtn
 
-    def opp_value(cell):
+    def opp_value(self, cell):
         if cell.owner != game.uid:
             if cell.building == BLD_GOLD_MINE:
                 return self.ogw * cell.building.level
@@ -67,10 +59,27 @@ class Agent:
 
         return 0
 
-    def build_weight(cell):
-        return (cell.gold * g_weight, cell.energy * e_weight)
+    def build_weight(self, cell):
+        return (cell.gold * self.g_weight(), cell.energy * self.e_weight())
 
-    def play_game(self, game, room='public', username='SmallBrain', password=str(int(time.time()))):
+
+    def cell_desire(self, cell):
+      cell_danger = self.cdw * self.cell_danger(cell), 
+      cell_gain = self.cgw * self.cell_gain(cell), 
+      delta_perim = self.dpw * self.delta_perim(cell),
+      opp_value = self.opp_value(cell), 
+
+      #home_dist, hdw = self.home_dist(cell), 
+
+      return (cell_danger, cell_gain, delta_perim, opp_value)
+
+    def play_game(self, game, room='xD', username='SmallBrain', password='abcde'):
+
+        self.game = game
+        game.connect(room = room)
+        if not game.register(username = username, \
+                password = password):
+            return
         while True:
             # The command list we will send to the server
             cmd_list = []
@@ -98,24 +107,18 @@ class Agent:
             # are MapCell. Get all my cells.
             for cell in game.me.cells.values():
                 # Check the surrounding position
+
                 for pos in cell.position.get_surrounding_cardinals():
                     # Get the MapCell object of that position
                     c = game.game_map[pos]
                     # Attack if the cost is less than what I have, and the owner
                     # is not mine, and I have not attacked it in this round already
                     # We also try to keep our cell number under 100 to avoid tax
-                    if c.attack_cost < me.energy and c.owner != game.uid \
-                            and c.position not in attack_list
-                        # Add the attack command in the command list
-                        # Subtract the attack cost manually so I can keep track
-                        # of the energy I have.
-                        # Add the position to the attack list so I won't attack
-                        # the same cell
-                        cmd_list.append(game.attack(pos, c.attack_cost))
-                        print("We are attacking ({}, {}) with {} energy".format(
-                            pos.x, pos.y, c.attack_cost))
-                        game.me.energy -= c.attack_cost
-                        attack_list.append(c.position)
+                    if c.owner != game.uid:
+                        attack_list.append( (self.cell_desire(cell), cell) )
+                    
+
+
 
                 # If we can upgrade the building, upgrade it.
                 # Notice can_update only checks for upper bound. You need to check
@@ -123,19 +126,18 @@ class Agent:
                 if cell.building.can_upgrade and \
                         (cell.building.is_home or cell.building.level < me.tech_level):
                     
-                    weight = None
+                    weight = 0
                     if cell.building.name == BLD_ENERGY_WELL:
-                        weight = self.g_weight * cell.gold
+                        weight = self.g_weight() * cell.gold
                     elif cell.building.name == BLD_GOLD_MINE:
-                        weight = self.e_weight * cell.energy
+                        weight = self.e_weight() * cell.energy
                         
                     build_list.append((None, 1, weight, cell))
 
-                # Build a random building if we have enough gold
                 if cell.owner == me.uid and cell.building.is_empty and me.gold >= BUILDING_COST[0]:
 
                     # Find the more preferable between gold mine and energy well
-                    weights = build_weight(cell)
+                    weights = self.build_weight(cell)
                     pref_building = BLD_ENERGY_WELL
                     pref_weight = weights[1]
                     if weights[0] > weights[1]:
@@ -143,39 +145,50 @@ class Agent:
                         pref_weight = weights[0]
 
                     build_list.append((pref_building, 0, pref_weight, cell))
+                
+            sortAttacks = lambda a: a[0]
+            attack_list.sort(key=sortAttacks)
 
-                def sortBuildOps(buildOp):
-                    return buildOp[2]
+            for i in attack_list:
+                temp_e = me.energy - i[1].attack_cost
+                if temp_e < self.e_threshold0:
+                    cmd_list.append(game.attack(pos, c.attack_cost))
+                    me.energy = temp_e
+                    print("We are attacking ({}, {}) with {} energy".format(
+                        pos.x, pos.y, c.attack_cost))
+                else:
+                    break    
+            sortBuildOps = lambda buildOp: buildOp[2]
 
-                build_list.sort(key = sortBuildOps)
-                for i in build_list:
-                    if me.gold < g_threshold or me.energy < e_threshold:
+            build_list.sort(key = sortBuildOps)
+            for i in build_list:
+                if me.gold < self.g_threshold or me.energy < self.e_threshold:
+                    break
+
+                if i[1]:
+                    cmd_list.append(game.upgrade(i[3].position))
+
+                    temp_g = me.gold - cell.building.upgrade_gold
+                    temp_e = me.energy - cell.building.upgrade_energy
+                    if temp_g >= self.g_threshold:
+                        me.gold = temp_g
+                    else:
+                        break
+                    if temp_e >= self.e_threshold:
+                        me.energy = temp_e
+                    else:
                         break
 
-                    if i[1]:
-                        cmd_list.append(game.upgrade(i[3]))
-
-                        temp_g = me.gold - cell.building.upgrade_gold
-                        temp_e = me.energy - cell.building.upgrade_energy
-                        if temp_g >= g_threshold:
-                            me.gold = temp_g
-                        else:
-                            break
-                        if temp_e >= e_threshold:
-                            me.energy = temp_e
-                        else:
-                            break
-
-                        print("We upgraded ({}, {})".format(
-                            cell.position.x, cell.position.y))
-                    else:
-                        temp_g = me.gold - 100
-                        if temp_g >= g_threshold:
-                            me.gold = temp_g
-                        cmd_list.append(game.build(i[3], i[0]))
-                        me.gold -= 100
-                        print("We build {} on ({}, {})".format(
-                            i[0], cell.position.x, cell.position.y))
+                    print("We upgraded ({}, {})".format(
+                        cell.position.x, cell.position.y))
+                else:
+                    temp_g = me.gold - 100
+                    if temp_g >= self.g_threshold:
+                        me.gold = temp_g
+                    cmd_list.append(game.build(i[3].position, i[0]))
+                    me.gold -= 100
+                    print("We build {} on ({}, {})".format(
+                        i[0], cell.position.x, cell.position.y))
 
             # Send the command list to the server
             result = game.send_cmd(cmd_list)
@@ -191,14 +204,12 @@ if __name__ == '__main__':
     #rank_room = [room for room in room_list if room["rank"] and room["player_number"] < room["max_player"]]
     #room = random.choice(rank_room)["name"]
     # ======================================================================
-    room = 'public'  # Delete this line if you have a room from above
+    room = 'xD'  # Delete this line if you have a room from above
 
     # ==========================  Play game once ===========================
-    Agent.play_game(
-        game=game,
-        room=room,
-        username='ExampleAI' + str(random.randint(1, 100)),
-        password=str(int(time.time()))
+    a = Agent()
+    a.play_game(
+        game
     )
     # ======================================================================
 
