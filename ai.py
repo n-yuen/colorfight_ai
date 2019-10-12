@@ -9,6 +9,8 @@ class Agent:
     def __init__():
         self.g_weight = 1.0
         self.e_weight = 1.0
+        g_threshold = 0
+        e_threshold = 0
         pass
 
     def connect_room(self, room='public', username='SmallBrain', password=str(int(time.time())):
@@ -88,15 +90,15 @@ class Agent:
                 # Notice can_update only checks for upper bound. You need to check
                 # tech_level by yourself.
                 if cell.building.can_upgrade and \
-                        (cell.building.is_home or cell.building.level < me.tech_level) and \
-                        cell.building.upgrade_gold < me.gold and \
-                        cell.building.upgrade_energy < me.energy:
-
+                        (cell.building.is_home or cell.building.level < me.tech_level):
                     
-                    cmd_list.append(game.upgrade(cell.position))
-
-                    me.gold -= cell.building.upgrade_gold
-                    me.energy -= cell.building.upgrade_energy
+                    weight = None
+                    if cell.building.name == BLD_ENERGY_WELL:
+                        weight = self.g_weight * cell.gold
+                    elif cell.building.name == BLD_GOLD_MINE:
+                        weight = self.e_weight * cell.energy
+                        
+                    build_list.append((None, 1, weight, cell))
 
                 # Build a random building if we have enough gold
                 if cell.owner == me.uid and cell.building.is_empty and me.gold >= BUILDING_COST[0]:
@@ -112,7 +114,7 @@ class Agent:
                     build_list.append((pref_building, 0, pref_weight, cell))
 
                 def sortBuildOps(buildOp):
-                    return buildOp[3]
+                    return buildOp[2]
 
                 build_list.sort(key = sortBuildOps)
                 for i in build_list:
@@ -121,11 +123,24 @@ class Agent:
 
                     if i[1]:
                         cmd_list.append(game.upgrade(i[3]))
-                        me.gold -= cell.building.upgrade_gold
-                        me.energy -= cell.building.upgrade_energy
+
+                        temp_g = me.gold - cell.building.upgrade_gold
+                        temp_e = me.energy - cell.building.upgrade_energy
+                        if temp_g >= g_threshold:
+                            me.gold = temp_g
+                        else:
+                            break
+                        if temp_e >= e_threshold:
+                            me.energy = temp_e
+                        else:
+                            break
+
                         print("We upgraded ({}, {})".format(
                             cell.position.x, cell.position.y))
                     else:
+                        temp_g = me.gold - 100
+                        if temp_g >= g_threshold:
+                            me.gold = temp_g
                         cmd_list.append(game.build(i[3], i[0]))
                         me.gold -= 100
                         print("We build {} on ({}, {})".format(
@@ -134,80 +149,6 @@ class Agent:
             # Send the command list to the server
             result = game.send_cmd(cmd_list)
             print(result)
-
-    def play_gameExample(self, game, room='public', username='SmallBrain', password=str(int(time.time()))):
-        while True:
-            # The command list we will send to the server
-            cmd_list = []
-            # The list of cells that we want to attack
-            attack_list = []
-            # update_turn() is required to get the latest information from the
-            # server. This will halt the program until it receives the updated
-            # information.
-            # After update_turn(), game object will be updated.
-            # update_turn() returns a Boolean value indicating if it's still
-            # the same game. If it's not, break out
-            if not self.game.update_turn():
-                break
-
-            # Check if you exist in the game. If not, wait for the next round.
-            # You may not appear immediately after you join. But you should be
-            # in the game after one round.
-            if self.game.me == None:
-                continue
-
-            me = self.game.me
-
-            # game.me.cells is a dict, where the keys are Position and the values
-            # are MapCell. Get all my cells.
-            for cell in game.me.cells.values():
-                # Check the surrounding position
-                for pos in cell.position.get_surrounding_cardinals():
-                    # Get the MapCell object of that position
-                    c = game.game_map[pos]
-                    # Attack if the cost is less than what I have, and the owner
-                    # is not mine, and I have not attacked it in this round already
-                    # We also try to keep our cell number under 100 to avoid tax
-                    if c.attack_cost < me.energy and c.owner != game.uid \
-                            and c.position not in attack_list \
-                            and len(me.cells) < 95:
-                        # Add the attack command in the command list
-                        # Subtract the attack cost manually so I can keep track
-                        # of the energy I have.
-                        # Add the position to the attack list so I won't attack
-                        # the same cell
-                        cmd_list.append(game.attack(pos, c.attack_cost))
-                        print("We are attacking ({}, {}) with {} energy".format(
-                            pos.x, pos.y, c.attack_cost))
-                        game.me.energy -= c.attack_cost
-                        attack_list.append(c.position)
-
-                # If we can upgrade the building, upgrade it.
-                # Notice can_update only checks for upper bound. You need to check
-                # tech_level by yourself.
-                if cell.building.can_upgrade and \
-                        (cell.building.is_home or cell.building.level < me.tech_level) and \
-                        cell.building.upgrade_gold < me.gold and \
-                        cell.building.upgrade_energy < me.energy:
-                    cmd_list.append(game.upgrade(cell.position))
-                    print("We upgraded ({}, {})".format(
-                        cell.position.x, cell.position.y))
-                    me.gold -= cell.building.upgrade_gold
-                    me.energy -= cell.building.upgrade_energy
-
-                # Build a random building if we have enough gold
-                if cell.owner == me.uid and cell.building.is_empty and me.gold >= BUILDING_COST[0]:
-                    building = random.choice(
-                        [BLD_FORTRESS, BLD_GOLD_MINE, BLD_ENERGY_WELL])
-                    cmd_list.append(game.build(cell.position, building))
-                    print("We build {} on ({}, {})".format(
-                        building, cell.position.x, cell.position.y))
-                    me.gold -= 100
-
-            # Send the command list to the server
-            result = game.send_cmd(cmd_list)
-            print(result)
-
 
 if __name__ == '__main__':
     # Create a Colorfight Instance. This will be the object that you interact
