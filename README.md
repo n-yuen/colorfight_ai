@@ -1,6 +1,6 @@
 # Introduction
 
-This is my AI that won ACM [AI]nvasion's second prize and the Green Hills Software Prize. I competed by myself under 'Team xD'. The code here is some of **the worst** spaghetti code I've ever written.
+This is my AI that won ACM [AI]nvasion's second prize and the Green Hills Software Prize. I competed by myself under 'Team xD'. The code here is untouched from the day of the competition; as a result, there are many possible areas of improvement if I wanted to improve the AI further.
 
 My algorithm tries to grab energy early in the game. When another player's territory is nearby, it tends to build fortresses. Later in the game, it will prefer building gold mines over energy, and after a certain number of turns it sets aside a specified amount of money to stockpile to try to win the game.
 
